@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -41,7 +41,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'client')));
 
 // ユーザー登録エンドポイント
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', async (req: Request, res: Response) => {
   const { email, name, password } = req.body;
   try {
     // メールアドレスの重複チェック
@@ -64,7 +64,7 @@ app.post('/api/auth/register', async (req, res) => {
 });
 
 // ログインエンドポイント
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', async (req: Request, res: Response) => {
   const { email } = req.body;
   try {
     const result: QueryResult<User> = await pool.query(
@@ -84,7 +84,7 @@ app.post('/api/auth/login', async (req, res) => {
 });
 
 // APIエンドポイント
-app.get('/api/projects/:id', async (req, res) => {
+app.get('/api/projects/:id', async (req: Request, res: Response) => {
   try {
     const result: QueryResult<Project> = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
     res.json(result.rows[0]);
@@ -93,7 +93,7 @@ app.get('/api/projects/:id', async (req, res) => {
   }
 });
 
-app.post('/api/projects', async (req, res) => {
+app.post('/api/projects', async (req: Request, res: Response) => {
   const { name, ownerId } = req.body;
   try {
     const result: QueryResult<Project> = await pool.query(
@@ -143,7 +143,7 @@ io.on('connection', (socket) => {
 });
 
 // すべてのその他のリクエストをindex.htmlにリダイレクト
-app.get('*', (req, res) => {
+app.get('*', (req: Request, res: Response) => {
   res.sendFile(path.join(__dirname, 'client', 'index.html'));
 });
 
