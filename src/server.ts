@@ -1,4 +1,4 @@
-import express, { Request, Response, Router } from 'express';
+import express, { Request, Response, Router, RequestHandler } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -23,6 +23,21 @@ interface Project {
   updated_at: Date;
 }
 
+interface RegisterRequest {
+  email: string;
+  name: string;
+  password: string;
+}
+
+interface LoginRequest {
+  email: string;
+}
+
+interface CreateProjectRequest {
+  name: string;
+  ownerId: string;
+}
+
 dotenv.config();
 
 const app = express();
@@ -42,11 +57,11 @@ const clientPath = path.resolve(__dirname, '../dist/client');
 app.use(express.static(clientPath));
 
 // APIルーターの作成
-const apiRouter = express.Router();
+const apiRouter = Router();
 
 // ユーザー登録エンドポイント
-apiRouter.post('/auth/register', async (req: Request, res: Response) => {
-  const { email, name, password } = req.body;
+const registerHandler: RequestHandler = async (req, res) => {
+  const { email, name, password } = req.body as RegisterRequest;
   try {
     // メールアドレスの重複チェック
     const existingUser: QueryResult<User> = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -65,11 +80,11 @@ apiRouter.post('/auth/register', async (req: Request, res: Response) => {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+};
 
 // ログインエンドポイント
-apiRouter.post('/auth/login', async (req: Request, res: Response) => {
-  const { email } = req.body;
+const loginHandler: RequestHandler = async (req, res) => {
+  const { email } = req.body as LoginRequest;
   try {
     const result: QueryResult<User> = await pool.query(
       'SELECT id, email, name, created_at FROM users WHERE email = $1',
@@ -85,20 +100,20 @@ apiRouter.post('/auth/login', async (req: Request, res: Response) => {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+};
 
 // プロジェクトエンドポイント
-apiRouter.get('/projects/:id', async (req: Request, res: Response) => {
+const getProjectHandler: RequestHandler = async (req, res) => {
   try {
     const result: QueryResult<Project> = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
     res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+};
 
-apiRouter.post('/projects', async (req: Request, res: Response) => {
-  const { name, ownerId } = req.body;
+const createProjectHandler: RequestHandler = async (req, res) => {
+  const { name, ownerId } = req.body as CreateProjectRequest;
   try {
     const result: QueryResult<Project> = await pool.query(
       'INSERT INTO projects (name, owner_id) VALUES ($1, $2) RETURNING *',
@@ -108,7 +123,13 @@ apiRouter.post('/projects', async (req: Request, res: Response) => {
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
-});
+};
+
+// ルートハンドラーの登録
+apiRouter.post('/auth/register', registerHandler);
+apiRouter.post('/auth/login', loginHandler);
+apiRouter.get('/projects/:id', getProjectHandler);
+apiRouter.post('/projects', createProjectHandler);
 
 // APIルーターをマウント
 app.use('/api', apiRouter);
