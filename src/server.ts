@@ -23,6 +23,49 @@ app.use(express.json());
 // 静的ファイルの提供
 app.use(express.static(path.join(__dirname, 'client')));
 
+// ユーザー登録エンドポイント
+app.post('/api/auth/register', async (req, res) => {
+  const { email, name, password } = req.body;
+  try {
+    // メールアドレスの重複チェック
+    const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    if (existingUser.rows.length > 0) {
+      return res.status(400).json({ error: 'Email already exists' });
+    }
+
+    // 新規ユーザーの作成
+    const result = await pool.query(
+      'INSERT INTO users (email, name) VALUES ($1, $2) RETURNING id, email, name, created_at',
+      [email, name]
+    );
+    
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// ログインエンドポイント
+app.post('/api/auth/login', async (req, res) => {
+  const { email } = req.body;
+  try {
+    const result = await pool.query(
+      'SELECT id, email, name, created_at FROM users WHERE email = $1',
+      [email]
+    );
+    
+    if (result.rows.length === 0) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 // APIエンドポイント
 app.get('/api/projects/:id', async (req, res) => {
   try {
