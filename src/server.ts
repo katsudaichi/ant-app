@@ -1,4 +1,4 @@
-import express, { Request, Response } from 'express';
+import express, { Request, Response, Router } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -34,6 +34,9 @@ const io = new Server(httpServer, {
   }
 });
 
+// ルーターの作成
+const router = Router();
+
 app.use(cors());
 app.use(express.json());
 
@@ -41,7 +44,7 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'client')));
 
 // ユーザー登録エンドポイント
-app.post('/api/auth/register', async (req: Request, res: Response) => {
+router.post('/api/auth/register', async (req: Request, res: Response) => {
   const { email, name, password } = req.body;
   try {
     // メールアドレスの重複チェック
@@ -64,7 +67,7 @@ app.post('/api/auth/register', async (req: Request, res: Response) => {
 });
 
 // ログインエンドポイント
-app.post('/api/auth/login', async (req: Request, res: Response) => {
+router.post('/api/auth/login', async (req: Request, res: Response) => {
   const { email } = req.body;
   try {
     const result: QueryResult<User> = await pool.query(
@@ -84,7 +87,7 @@ app.post('/api/auth/login', async (req: Request, res: Response) => {
 });
 
 // APIエンドポイント
-app.get('/api/projects/:id', async (req: Request, res: Response) => {
+router.get('/api/projects/:id', async (req: Request, res: Response) => {
   try {
     const result: QueryResult<Project> = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
     res.json(result.rows[0]);
@@ -93,7 +96,7 @@ app.get('/api/projects/:id', async (req: Request, res: Response) => {
   }
 });
 
-app.post('/api/projects', async (req: Request, res: Response) => {
+router.post('/api/projects', async (req: Request, res: Response) => {
   const { name, ownerId } = req.body;
   try {
     const result: QueryResult<Project> = await pool.query(
@@ -105,6 +108,9 @@ app.post('/api/projects', async (req: Request, res: Response) => {
     res.status(500).json({ error: 'Internal server error' });
   }
 });
+
+// ルーターをアプリケーションに登録
+app.use(router);
 
 // WebSocket接続の処理
 io.on('connection', (socket) => {
