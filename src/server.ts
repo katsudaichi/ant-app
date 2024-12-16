@@ -5,6 +5,7 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import { pool } from './db/config';
 import path from 'path';
+import { QueryResult } from 'pg';
 
 dotenv.config();
 
@@ -28,13 +29,13 @@ app.post('/api/auth/register', async (req, res) => {
   const { email, name, password } = req.body;
   try {
     // メールアドレスの重複チェック
-    const existingUser = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
+    const existingUser: QueryResult = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
       return res.status(400).json({ error: 'Email already exists' });
     }
 
     // 新規ユーザーの作成
-    const result = await pool.query(
+    const result: QueryResult = await pool.query(
       'INSERT INTO users (email, name) VALUES ($1, $2) RETURNING id, email, name, created_at',
       [email, name]
     );
@@ -50,7 +51,7 @@ app.post('/api/auth/register', async (req, res) => {
 app.post('/api/auth/login', async (req, res) => {
   const { email } = req.body;
   try {
-    const result = await pool.query(
+    const result: QueryResult = await pool.query(
       'SELECT id, email, name, created_at FROM users WHERE email = $1',
       [email]
     );
@@ -69,8 +70,8 @@ app.post('/api/auth/login', async (req, res) => {
 // APIエンドポイント
 app.get('/api/projects/:id', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
-    res.json(rows[0]);
+    const result: QueryResult = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
+    res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
@@ -79,11 +80,11 @@ app.get('/api/projects/:id', async (req, res) => {
 app.post('/api/projects', async (req, res) => {
   const { name, ownerId } = req.body;
   try {
-    const { rows } = await pool.query(
+    const result: QueryResult = await pool.query(
       'INSERT INTO projects (name, owner_id) VALUES ($1, $2) RETURNING *',
       [name, ownerId]
     );
-    res.json(rows[0]);
+    res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
