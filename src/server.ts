@@ -1,4 +1,4 @@
-import express, { Request, Response, Router } from 'express';
+import express, { Request, Response, Router, RequestHandler } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -60,7 +60,7 @@ app.use(express.static(clientPath));
 const apiRouter = Router();
 
 // ユーザー登録エンドポイント
-const registerHandler = async (req: Request<{}, any, RegisterRequest>, res: Response) => {
+const registerHandler: RequestHandler<{}, any, RegisterRequest> = async (req, res) => {
   const { email, name, password } = req.body;
   try {
     // メールアドレスの重複チェック
@@ -75,15 +75,15 @@ const registerHandler = async (req: Request<{}, any, RegisterRequest>, res: Resp
       [email, name]
     );
     
-    res.status(201).json(result.rows[0]);
+    return res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // ログインエンドポイント
-const loginHandler = async (req: Request<{}, any, LoginRequest>, res: Response) => {
+const loginHandler: RequestHandler<{}, any, LoginRequest> = async (req, res) => {
   const { email } = req.body;
   try {
     const result: QueryResult<User> = await pool.query(
@@ -95,33 +95,33 @@ const loginHandler = async (req: Request<{}, any, LoginRequest>, res: Response) 
       return res.status(401).json({ error: 'Invalid credentials' });
     }
 
-    res.json(result.rows[0]);
+    return res.json(result.rows[0]);
   } catch (error) {
     console.error('Login error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // プロジェクトエンドポイント
-const getProjectHandler = async (req: Request<{ id: string }>, res: Response) => {
+const getProjectHandler: RequestHandler<{ id: string }> = async (req, res) => {
   try {
     const result: QueryResult<Project> = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
-    res.json(result.rows[0]);
+    return res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-const createProjectHandler = async (req: Request<{}, any, CreateProjectRequest>, res: Response) => {
+const createProjectHandler: RequestHandler<{}, any, CreateProjectRequest> = async (req, res) => {
   const { name, ownerId } = req.body;
   try {
     const result: QueryResult<Project> = await pool.query(
       'INSERT INTO projects (name, owner_id) VALUES ($1, $2) RETURNING *',
       [name, ownerId]
     );
-    res.json(result.rows[0]);
+    return res.json(result.rows[0]);
   } catch (error) {
-    res.status(500).json({ error: 'Internal server error' });
+    return res.status(500).json({ error: 'Internal server error' });
   }
 };
 
