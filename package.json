@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && tsc -p tsconfig.node.json",
+    "build": "tsc && vite build && tsc -p tsconfig.node.json && mv dist/src/server.js dist/server.js && rm -rf dist/src",
     "lint": "eslint .",
     "preview": "vite preview",
     "start": "node dist/server.js"
