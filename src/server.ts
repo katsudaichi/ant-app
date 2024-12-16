@@ -38,7 +38,8 @@ app.use(cors());
 app.use(express.json());
 
 // 静的ファイルの提供
-app.use(express.static(path.join(__dirname, 'client')));
+const clientPath = path.resolve(__dirname, '../dist/client');
+app.use(express.static(clientPath));
 
 // APIルーターの作成
 const apiRouter = express.Router();
@@ -150,7 +151,7 @@ io.on('connection', (socket) => {
 
 // すべてのその他のリクエストをindex.htmlにリダイレクト
 app.get('*', (req: Request, res: Response) => {
-  res.sendFile(path.join(__dirname, 'client', 'index.html'));
+  res.sendFile(path.resolve(clientPath, 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
