@@ -34,17 +34,17 @@ const io = new Server(httpServer, {
   }
 });
 
-// ルーターの作成
-const router = Router();
-
 app.use(cors());
 app.use(express.json());
 
 // 静的ファイルの提供
 app.use(express.static(path.join(__dirname, 'client')));
 
+// APIルーターの作成
+const apiRouter = express.Router();
+
 // ユーザー登録エンドポイント
-router.post('/api/auth/register', async (req: Request, res: Response) => {
+apiRouter.post('/auth/register', async (req: Request, res: Response) => {
   const { email, name, password } = req.body;
   try {
     // メールアドレスの重複チェック
@@ -67,7 +67,7 @@ router.post('/api/auth/register', async (req: Request, res: Response) => {
 });
 
 // ログインエンドポイント
-router.post('/api/auth/login', async (req: Request, res: Response) => {
+apiRouter.post('/auth/login', async (req: Request, res: Response) => {
   const { email } = req.body;
   try {
     const result: QueryResult<User> = await pool.query(
@@ -86,8 +86,8 @@ router.post('/api/auth/login', async (req: Request, res: Response) => {
   }
 });
 
-// APIエンドポイント
-router.get('/api/projects/:id', async (req: Request, res: Response) => {
+// プロジェクトエンドポイント
+apiRouter.get('/projects/:id', async (req: Request, res: Response) => {
   try {
     const result: QueryResult<Project> = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
     res.json(result.rows[0]);
@@ -96,7 +96,7 @@ router.get('/api/projects/:id', async (req: Request, res: Response) => {
   }
 });
 
-router.post('/api/projects', async (req: Request, res: Response) => {
+apiRouter.post('/projects', async (req: Request, res: Response) => {
   const { name, ownerId } = req.body;
   try {
     const result: QueryResult<Project> = await pool.query(
@@ -109,8 +109,8 @@ router.post('/api/projects', async (req: Request, res: Response) => {
   }
 });
 
-// ルーターをアプリケーションに登録
-app.use(router);
+// APIルーターをマウント
+app.use('/api', apiRouter);
 
 // WebSocket接続の処理
 io.on('connection', (socket) => {
