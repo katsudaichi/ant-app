@@ -60,13 +60,14 @@ app.use(express.static(clientPath));
 const apiRouter = Router();
 
 // ユーザー登録エンドポイント
-const registerHandler: RequestHandler<{}, any, RegisterRequest> = async (req, res) => {
+const registerHandler: RequestHandler<{}, any, RegisterRequest> = async (req, res): Promise<void> => {
   const { email, name, password } = req.body;
   try {
     // メールアドレスの重複チェック
     const existingUser: QueryResult<User> = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
-      return res.status(400).json({ error: 'Email already exists' });
+      res.status(400).json({ error: 'Email already exists' });
+      return;
     }
 
     // 新規ユーザーの作成
@@ -75,15 +76,15 @@ const registerHandler: RequestHandler<{}, any, RegisterRequest> = async (req, re
       [email, name]
     );
     
-    return res.status(201).json(result.rows[0]);
+    res.status(201).json(result.rows[0]);
   } catch (error) {
     console.error('Registration error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // ログインエンドポイント
-const loginHandler: RequestHandler<{}, any, LoginRequest> = async (req, res) => {
+const loginHandler: RequestHandler<{}, any, LoginRequest> = async (req, res): Promise<void> => {
   const { email } = req.body;
   try {
     const result: QueryResult<User> = await pool.query(
@@ -92,36 +93,37 @@ const loginHandler: RequestHandler<{}, any, LoginRequest> = async (req, res) => 
     );
     
     if (result.rows.length === 0) {
-      return res.status(401).json({ error: 'Invalid credentials' });
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
     }
 
-    return res.json(result.rows[0]);
+    res.json(result.rows[0]);
   } catch (error) {
     console.error('Login error:', error);
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
 // プロジェクトエンドポイント
-const getProjectHandler: RequestHandler<{ id: string }> = async (req, res) => {
+const getProjectHandler: RequestHandler<{ id: string }> = async (req, res): Promise<void> => {
   try {
     const result: QueryResult<Project> = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
-    return res.json(result.rows[0]);
+    res.json(result.rows[0]);
   } catch (error) {
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-const createProjectHandler: RequestHandler<{}, any, CreateProjectRequest> = async (req, res) => {
+const createProjectHandler: RequestHandler<{}, any, CreateProjectRequest> = async (req, res): Promise<void> => {
   const { name, ownerId } = req.body;
   try {
     const result: QueryResult<Project> = await pool.query(
       'INSERT INTO projects (name, owner_id) VALUES ($1, $2) RETURNING *',
       [name, ownerId]
     );
-    return res.json(result.rows[0]);
+    res.json(result.rows[0]);
   } catch (error) {
-    return res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 
