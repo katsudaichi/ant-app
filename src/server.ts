@@ -4,6 +4,7 @@ import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import { pool } from './db/config';
+import path from 'path';
 
 dotenv.config();
 
@@ -19,44 +20,8 @@ const io = new Server(httpServer, {
 app.use(cors());
 app.use(express.json());
 
-// WebSocket接続の処理
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-
-  // プロジェクトへの参加
-  socket.on('join-project', (projectId: string) => {
-    socket.join(projectId);
-    console.log(`User ${socket.id} joined project ${projectId}`);
-  });
-
-  // カーソル位置の更新
-  socket.on('cursor-move', (data: { projectId: string; position: { x: number; y: number } }) => {
-    socket.to(data.projectId).emit('cursor-update', {
-      userId: socket.id,
-      position: data.position
-    });
-  });
-
-  // アクターの更新
-  socket.on('actor-update', async (data: { projectId: string; actorId: string; position: { x: number; y: number } }) => {
-    try {
-      await pool.query(
-        'UPDATE actors SET position_x = $1, position_y = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-        [data.position.x, data.position.y, data.actorId]
-      );
-      socket.to(data.projectId).emit('actor-updated', {
-        actorId: data.actorId,
-        position: data.position
-      });
-    } catch (error) {
-      console.error('Error updating actor:', error);
-    }
-  });
-
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
+// 静的ファイルの提供
+app.use(express.static(path.join(__dirname, 'client')));
 
 // APIエンドポイント
 app.get('/api/projects/:id', async (req, res) => {
@@ -79,6 +44,47 @@ app.post('/api/projects', async (req, res) => {
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
   }
+});
+
+// WebSocket接続の処理
+io.on('connection', (socket) => {
+  console.log('User connected:', socket.id);
+
+  socket.on('join-project', (projectId: string) => {
+    socket.join(projectId);
+    console.log(`User ${socket.id} joined project ${projectId}`);
+  });
+
+  socket.on('cursor-move', (data: { projectId: string; position: { x: number; y: number } }) => {
+    socket.to(data.projectId).emit('cursor-update', {
+      userId: socket.id,
+      position: data.position
+    });
+  });
+
+  socket.on('actor-update', async (data: { projectId: string; actorId: string; position: { x: number; y: number } }) => {
+    try {
+      await pool.query(
+        'UPDATE actors SET position_x = $1, position_y = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
+        [data.position.x, data.position.y, data.actorId]
+      );
+      socket.to(data.projectId).emit('actor-updated', {
+        actorId: data.actorId,
+        position: data.position
+      });
+    } catch (error) {
+      console.error('Error updating actor:', error);
+    }
+  });
+
+  socket.on('disconnect', () => {
+    console.log('User disconnected:', socket.id);
+  });
+});
+
+// すべてのその他のリクエストをindex.htmlにリダイレクト
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'client', 'index.html'));
 });
 
 const PORT = process.env.PORT || 3000;
