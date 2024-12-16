@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { Actor } from '../types';
+import { useProjectStore } from '../stores/projectStore';
 
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
@@ -15,13 +16,17 @@ interface CursorPosition {
 
 export default function Canvas({ projectId }: Props) {
   const [socket, setSocket] = useState<Socket | null>(null);
-  const [actors, setActors] = useState<Actor[]>([]);
   const [cursors, setCursors] = useState<Map<string, { x: number; y: number }>>(new Map());
   const canvasRef = useRef<HTMLDivElement>(null);
+  
+  const { actors, loadProject, updateActor } = useProjectStore();
 
   useEffect(() => {
     const newSocket = io(BACKEND_URL);
     setSocket(newSocket);
+
+    // プロジェクトデータの読み込み
+    loadProject(projectId);
 
     newSocket.emit('join-project', projectId);
 
@@ -30,13 +35,7 @@ export default function Canvas({ projectId }: Props) {
     });
 
     newSocket.on('actor-updated', (data: { actorId: string; position: { x: number; y: number } }) => {
-      setActors(prev =>
-        prev.map(actor =>
-          actor.id === data.actorId
-            ? { ...actor, position: data.position }
-            : actor
-        )
-      );
+      updateActor(data.actorId, { position_x: data.position.x, position_y: data.position.y });
     });
 
     return () => {
@@ -59,13 +58,27 @@ export default function Canvas({ projectId }: Props) {
     });
   };
 
-  const handleActorDrag = (actorId: string, position: { x: number; y: number }) => {
+  const handleActorDrag = async (actor: Actor, newPosition: { x: number; y: number }) => {
     if (!socket) return;
 
+    // ローカルの状態を更新
+    updateActor(actor.id, {
+      position_x: newPosition.x,
+      position_y: newPosition.y
+    });
+
+    // サーバーに更新を送信
     socket.emit('actor-update', {
       projectId,
-      actorId,
-      position
+      actorId: actor.id,
+      position: newPosition
+    });
+
+    // データベースに保存
+    await useProjectStore.getState().saveActor({
+      ...actor,
+      position_x: newPosition.x,
+      position_y: newPosition.y
     });
   };
 
@@ -81,15 +94,15 @@ export default function Canvas({ projectId }: Props) {
           key={actor.id}
           className="absolute cursor-move bg-blue-500 rounded-full w-8 h-8"
           style={{
-            left: actor.position.x,
-            top: actor.position.y,
+            left: actor.position_x,
+            top: actor.position_y,
             transform: 'translate(-50%, -50%)'
           }}
           draggable
           onDragEnd={(e) => {
             const rect = canvasRef.current?.getBoundingClientRect();
             if (!rect) return;
-            handleActorDrag(actor.id, {
+            handleActorDrag(actor, {
               x: e.clientX - rect.left,
               y: e.clientY - rect.top
             });

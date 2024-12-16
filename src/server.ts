@@ -38,6 +38,17 @@ interface CreateProjectRequest {
   ownerId: string;
 }
 
+interface Actor {
+  id: string;
+  project_id: string;
+  name: string;
+  position_x: number;
+  position_y: number;
+  created_at: Date;
+  updated_at: Date;
+  created_by: string;
+}
+
 dotenv.config();
 
 const app = express();
@@ -126,6 +137,59 @@ const createProjectHandler: RequestHandler<{}, any, CreateProjectRequest> = asyn
     res.status(500).json({ error: 'Internal server error' });
   }
 };
+
+// アクター関連のエンドポイント
+const getProjectActorsHandler: RequestHandler<{ projectId: string }> = async (req, res): Promise<void> => {
+  try {
+    const result: QueryResult<Actor> = await pool.query(
+      'SELECT * FROM actors WHERE project_id = $1 ORDER BY created_at',
+      [req.params.projectId]
+    );
+    res.json(result.rows);
+  } catch (error) {
+    console.error('Error fetching actors:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const updateActorHandler: RequestHandler<{ id: string }> = async (req, res): Promise<void> => {
+  const { name, position_x, position_y } = req.body;
+  try {
+    const result: QueryResult<Actor> = await pool.query(
+      'UPDATE actors SET name = $1, position_x = $2, position_y = $3, updated_at = CURRENT_TIMESTAMP WHERE id = $4 RETURNING *',
+      [name, position_x, position_y, req.params.id]
+    );
+    
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Actor not found' });
+      return;
+    }
+    
+    res.json(result.rows[0]);
+  } catch (error) {
+    console.error('Error updating actor:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+const createActorHandler: RequestHandler<{ projectId: string }> = async (req, res): Promise<void> => {
+  const { name, position_x, position_y, created_by } = req.body;
+  try {
+    const result: QueryResult<Actor> = await pool.query(
+      'INSERT INTO actors (project_id, name, position_x, position_y, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [req.params.projectId, name, position_x, position_y, created_by]
+    );
+    res.status(201).json(result.rows[0]);
+  } catch (error) {
+    console.error('Error creating actor:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+};
+
+// アクター関連のルートを追加
+apiRouter.get('/projects/:projectId/actors', getProjectActorsHandler);
+apiRouter.put('/actors/:id', updateActorHandler);
+apiRouter.post('/projects/:projectId/actors', createActorHandler);
 
 // ルートハンドラーの登録
 apiRouter.post('/auth/register', registerHandler);
