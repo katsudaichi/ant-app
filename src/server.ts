@@ -1,4 +1,4 @@
-import express, { Request, Response, Router, RequestHandler } from 'express';
+import express, { Request, Response, Router } from 'express';
 import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
@@ -60,8 +60,8 @@ app.use(express.static(clientPath));
 const apiRouter = Router();
 
 // ユーザー登録エンドポイント
-const registerHandler: RequestHandler = async (req, res) => {
-  const { email, name, password } = req.body as RegisterRequest;
+const registerHandler = async (req: Request<{}, any, RegisterRequest>, res: Response) => {
+  const { email, name, password } = req.body;
   try {
     // メールアドレスの重複チェック
     const existingUser: QueryResult<User> = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
@@ -83,8 +83,8 @@ const registerHandler: RequestHandler = async (req, res) => {
 };
 
 // ログインエンドポイント
-const loginHandler: RequestHandler = async (req, res) => {
-  const { email } = req.body as LoginRequest;
+const loginHandler = async (req: Request<{}, any, LoginRequest>, res: Response) => {
+  const { email } = req.body;
   try {
     const result: QueryResult<User> = await pool.query(
       'SELECT id, email, name, created_at FROM users WHERE email = $1',
@@ -103,7 +103,7 @@ const loginHandler: RequestHandler = async (req, res) => {
 };
 
 // プロジェクトエンドポイント
-const getProjectHandler: RequestHandler = async (req, res) => {
+const getProjectHandler = async (req: Request<{ id: string }>, res: Response) => {
   try {
     const result: QueryResult<Project> = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
     res.json(result.rows[0]);
@@ -112,8 +112,8 @@ const getProjectHandler: RequestHandler = async (req, res) => {
   }
 };
 
-const createProjectHandler: RequestHandler = async (req, res) => {
-  const { name, ownerId } = req.body as CreateProjectRequest;
+const createProjectHandler = async (req: Request<{}, any, CreateProjectRequest>, res: Response) => {
+  const { name, ownerId } = req.body;
   try {
     const result: QueryResult<Project> = await pool.query(
       'INSERT INTO projects (name, owner_id) VALUES ($1, $2) RETURNING *',
