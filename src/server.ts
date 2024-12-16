@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import dotenv from 'dotenv';
-import { pool } from '../dist/db/config';
+import { pool } from './db/config';
 
 dotenv.config();
 
