@@ -38,6 +38,12 @@ const registerHandler: RequestHandler<{}, any, RegisterRequest> = async (req, re
   try {
     console.log('Registration attempt:', { email, name }); // リクエストのログ
 
+    if (!email || !name || !password) {
+      console.log('Missing required fields');
+      res.status(400).json({ error: 'Missing required fields' });
+      return;
+    }
+
     // メールアドレスの重複チェック
     const existingUser: QueryResult<User> = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
@@ -52,17 +58,23 @@ const registerHandler: RequestHandler<{}, any, RegisterRequest> = async (req, re
 
     // 新規ユーザーの作成
     const result: QueryResult<User> = await pool.query(
-      'INSERT INTO users (email, name, password) VALUES ($1, $2, $3) RETURNING id, email, name, created_at',
+      'INSERT INTO users (email, name, password) VALUES ($1, $2, $3) RETURNING *',
       [email, name, hashedPassword]
     );
     
     const user = result.rows[0];
     console.log('User created successfully:', { id: user.id, email: user.email });
 
-    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET!);
+    // パスワードを除外したユーザー情報を作成
+    const { password: _, ...userWithoutPassword } = user;
+
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET || 'default_secret');
     console.log('JWT token generated');
 
-    res.status(201).json({ user, token });
+    res.status(201).json({ 
+      user: userWithoutPassword,
+      token
+    });
   } catch (error) {
     console.error('Registration error:', error);
     // エラーの詳細を返す
