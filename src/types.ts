@@ -37,6 +37,11 @@ export interface LoginRequest {
   password: string;
 }
 
+export interface CreateProjectRequest {
+  name: string;
+  ownerId: string;
+}
+
 export interface AuthResponse {
   user: User;
   token: string;
