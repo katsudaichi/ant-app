@@ -6,6 +6,7 @@ dotenv.config();
 let pool: Pool;
 
 if (process.env.DATABASE_URL) {
+  console.log('Using production database configuration');
   // 本番環境（Render）用の設定
   pool = new Pool({
     connectionString: process.env.DATABASE_URL,
@@ -14,6 +15,7 @@ if (process.env.DATABASE_URL) {
     }
   });
 } else {
+  console.log('Using development database configuration');
   // ローカル開発環境用の設定
   pool = new Pool({
     user: process.env.DB_USER,
@@ -23,5 +25,14 @@ if (process.env.DATABASE_URL) {
     port: parseInt(process.env.DB_PORT || '5432')
   });
 }
+
+// 接続テスト
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Database connection error:', err);
+  } else {
+    console.log('Database connected successfully at:', res.rows[0].now);
+  }
+});
 
 export { pool }; 

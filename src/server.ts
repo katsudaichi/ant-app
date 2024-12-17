@@ -36,15 +36,19 @@ const apiRouter = Router();
 const registerHandler: RequestHandler<{}, any, RegisterRequest> = async (req, res): Promise<void> => {
   const { email, name, password } = req.body;
   try {
+    console.log('Registration attempt:', { email, name }); // リクエストのログ
+
     // メールアドレスの重複チェック
     const existingUser: QueryResult<User> = await pool.query('SELECT * FROM users WHERE email = $1', [email]);
     if (existingUser.rows.length > 0) {
+      console.log('Email already exists:', email);
       res.status(400).json({ error: 'Email already exists' });
       return;
     }
 
     // パスワードのハッシュ化
     const hashedPassword = await bcrypt.hash(password, 10);
+    console.log('Password hashed successfully');
 
     // 新規ユーザーの作成
     const result: QueryResult<User> = await pool.query(
@@ -53,12 +57,24 @@ const registerHandler: RequestHandler<{}, any, RegisterRequest> = async (req, re
     );
     
     const user = result.rows[0];
+    console.log('User created successfully:', { id: user.id, email: user.email });
+
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET!);
+    console.log('JWT token generated');
 
     res.status(201).json({ user, token });
   } catch (error) {
     console.error('Registration error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    // エラーの詳細を返す
+    if (error instanceof Error) {
+      res.status(500).json({ 
+        error: 'Registration failed',
+        message: error.message,
+        details: process.env.NODE_ENV === 'development' ? error.stack : undefined
+      });
+    } else {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   }
 };
 
