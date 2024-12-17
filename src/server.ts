@@ -6,6 +6,9 @@ import dotenv from 'dotenv';
 import { pool } from './db/config';
 import path from 'path';
 import { QueryResult } from 'pg';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { auth } from './middleware/auth';
 
 interface User {
   id: string;
@@ -81,13 +84,19 @@ const registerHandler: RequestHandler<{}, any, RegisterRequest> = async (req, re
       return;
     }
 
+    // パスワードのハッシュ化
+    const hashedPassword = await bcrypt.hash(password, 10);
+
     // 新規ユーザーの作成
     const result: QueryResult<User> = await pool.query(
-      'INSERT INTO users (email, name) VALUES ($1, $2) RETURNING id, email, name, created_at',
-      [email, name]
+      'INSERT INTO users (email, name, password) VALUES ($1, $2, $3) RETURNING id, email, name, created_at',
+      [email, name, hashedPassword]
     );
     
-    res.status(201).json(result.rows[0]);
+    const user = result.rows[0];
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET!);
+
+    res.status(201).json({ user, token });
   } catch (error) {
     console.error('Registration error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -96,10 +105,10 @@ const registerHandler: RequestHandler<{}, any, RegisterRequest> = async (req, re
 
 // ログインエンドポイント
 const loginHandler: RequestHandler<{}, any, LoginRequest> = async (req, res): Promise<void> => {
-  const { email } = req.body;
+  const { email, password } = req.body;
   try {
     const result: QueryResult<User> = await pool.query(
-      'SELECT id, email, name, created_at FROM users WHERE email = $1',
+      'SELECT * FROM users WHERE email = $1',
       [email]
     );
     
@@ -108,17 +117,32 @@ const loginHandler: RequestHandler<{}, any, LoginRequest> = async (req, res): Pr
       return;
     }
 
-    res.json(result.rows[0]);
+    const user = result.rows[0];
+    const isMatch = await bcrypt.compare(password, user.password!);
+
+    if (!isMatch) {
+      res.status(401).json({ error: 'Invalid credentials' });
+      return;
+    }
+
+    const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET!);
+    delete user.password;
+
+    res.json({ user, token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
   }
 };
 
-// プロジェクトエンドポイント
+// プロジェクトエンドポイント（認証必須）
 const getProjectHandler: RequestHandler<{ id: string }> = async (req, res): Promise<void> => {
   try {
     const result: QueryResult<Project> = await pool.query('SELECT * FROM projects WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) {
+      res.status(404).json({ error: 'Project not found' });
+      return;
+    }
     res.json(result.rows[0]);
   } catch (error) {
     res.status(500).json({ error: 'Internal server error' });
