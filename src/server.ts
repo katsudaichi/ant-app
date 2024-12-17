@@ -218,16 +218,46 @@ io.on('connection', (socket) => {
 
   socket.on('actor-update', async (data: { projectId: string; actorId: string; position: { x: number; y: number } }) => {
     try {
-      await pool.query(
-        'UPDATE actors SET position_x = $1, position_y = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3',
-        [data.position.x, data.position.y, data.actorId]
+      // アクターの更新をデータベースに保存
+      const result: QueryResult<Actor> = await pool.query(
+        'UPDATE actors SET position_x = $1, position_y = $2, updated_at = CURRENT_TIMESTAMP WHERE id = $3 AND project_id = $4 RETURNING *',
+        [data.position.x, data.position.y, data.actorId, data.projectId]
       );
+
+      if (result.rows.length === 0) {
+        console.error('Actor not found or not in the specified project');
+        return;
+      }
+
+      const updatedActor = result.rows[0];
+
+      // 他のクライアントに更新を通知
       socket.to(data.projectId).emit('actor-updated', {
         actorId: data.actorId,
-        position: data.position
+        position: {
+          x: updatedActor.position_x,
+          y: updatedActor.position_y
+        }
       });
     } catch (error) {
       console.error('Error updating actor:', error);
+    }
+  });
+
+  socket.on('actor-create', async (data: { projectId: string; name: string; position: { x: number; y: number }; createdBy: string }) => {
+    try {
+      // 新しいアクターをデータベースに作成
+      const result: QueryResult<Actor> = await pool.query(
+        'INSERT INTO actors (project_id, name, position_x, position_y, created_by) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+        [data.projectId, data.name, data.position.x, data.position.y, data.createdBy]
+      );
+
+      const newActor = result.rows[0];
+
+      // 全クライアントに新しいアクターを通知
+      io.to(data.projectId).emit('actor-created', newActor);
+    } catch (error) {
+      console.error('Error creating actor:', error);
     }
   });
 

@@ -1,46 +1,44 @@
 export interface Actor {
   id: string;
+  project_id: string;
   name: string;
-  position: {
-    x: number;
-    y: number;
-  };
-  projectId: string;
-  createdBy: string;
+  position_x: number;
+  position_y: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface Project {
   id: string;
   name: string;
-  ownerId: string;
-  createdAt: string;
-  updatedAt: string;
+  owner_id: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface User {
   id: string;
   email: string;
   name: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ProjectMember {
-  projectId: string;
-  userId: string;
+  project_id: string;
+  user_id: string;
   role: 'owner' | 'editor' | 'viewer';
-  createdAt: string;
+  created_at: string;
 }
 
 export interface Comment {
   id: string;
-  projectId: string;
-  userId: string;
+  project_id: string;
+  user_id: string;
   content: string;
-  position: {
-    x: number;
-    y: number;
-  };
-  createdAt: string;
-  updatedAt: string;
+  position_x: number;
+  position_y: number;
+  created_at: string;
+  updated_at: string;
 } 

@@ -20,7 +20,7 @@ export default function Canvas({ projectId, userId }: Props) {
   const [cursors, setCursors] = useState<Map<string, { x: number; y: number }>>(new Map());
   const canvasRef = useRef<HTMLDivElement>(null);
   
-  const { actors, loadProject, updateActor, createActor } = useProjectStore();
+  const { actors, loadProject, updateActor, setActors } = useProjectStore();
 
   useEffect(() => {
     const newSocket = io(BACKEND_URL);
@@ -37,6 +37,10 @@ export default function Canvas({ projectId, userId }: Props) {
 
     newSocket.on('actor-updated', (data: { actorId: string; position: { x: number; y: number } }) => {
       updateActor(data.actorId, { position_x: data.position.x, position_y: data.position.y });
+    });
+
+    newSocket.on('actor-created', (newActor: Actor) => {
+      setActors([...actors, newActor]);
     });
 
     return () => {
@@ -59,7 +63,7 @@ export default function Canvas({ projectId, userId }: Props) {
     });
   };
 
-  const handleActorDrag = async (actor: Actor, newPosition: { x: number; y: number }) => {
+  const handleActorDrag = (actor: Actor, newPosition: { x: number; y: number }) => {
     if (!socket) return;
 
     // ローカルの状態を更新
@@ -74,17 +78,22 @@ export default function Canvas({ projectId, userId }: Props) {
       actorId: actor.id,
       position: newPosition
     });
-
-    // データベースに保存
-    await useProjectStore.getState().saveActor({
-      ...actor,
-      position_x: newPosition.x,
-      position_y: newPosition.y
-    });
   };
 
-  const handleAddActor = async () => {
-    await createActor(projectId, userId);
+  const handleAddActor = () => {
+    if (!socket) return;
+
+    const newActor = {
+      projectId,
+      name: `Actor ${actors.length + 1}`,
+      position: {
+        x: Math.random() * 500,
+        y: Math.random() * 500
+      },
+      createdBy: userId
+    };
+
+    socket.emit('actor-create', newActor);
   };
 
   return (
