@@ -1,25 +1,28 @@
-import React from 'react';
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { Layout } from './components/Layout';
-import { LoginPage } from './pages/LoginPage';
-import { ProjectsPage } from './pages/ProjectsPage';
-import { SignUpPage } from './pages/SignUpPage';
-import { RelationMapPage } from './pages/RelationMapPage';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { useAuthStore } from './stores/authStore';
+import RegisterPage from './pages/RegisterPage';
+import ProjectPage from './pages/ProjectPage';
 
-function App() {
-  return (
-    <BrowserRouter>
-      <Routes>
-        <Route path="/login" element={<LoginPage />} />
-        <Route path="/signup" element={<SignUpPage />} />
-        <Route element={<Layout />}>
-          <Route path="/projects" element={<ProjectsPage />} />
-          <Route path="/projects/:id" element={<RelationMapPage />} />
-          <Route path="/" element={<Navigate to="/projects" replace />} />
-        </Route>
-      </Routes>
-    </BrowserRouter>
-  );
+function PrivateRoute({ children }: { children: React.ReactNode }) {
+  const token = useAuthStore(state => state.token);
+  return token ? <>{children}</> : <Navigate to="/register" />;
 }
 
-export default App;
+export default function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/register" element={<RegisterPage />} />
+        <Route
+          path="/projects/:projectId"
+          element={
+            <PrivateRoute>
+              <ProjectPage />
+            </PrivateRoute>
+          }
+        />
+        <Route path="/" element={<Navigate to="/register" />} />
+      </Routes>
+    </Router>
+  );
+}
