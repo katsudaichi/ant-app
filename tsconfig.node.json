@@ -13,6 +13,11 @@
     "declaration": true,
     "declarationMap": true
   },
-  "include": ["src/server.ts", "src/db/**/*"],
+  "include": [
+    "src/server.ts",
+    "src/db/**/*",
+    "src/middleware/**/*",
+    "src/types.ts"
+  ],
   "exclude": ["node_modules"]
 }

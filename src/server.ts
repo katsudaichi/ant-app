@@ -9,48 +9,7 @@ import { QueryResult } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { auth } from './middleware/auth';
-
-interface User {
-  id: string;
-  email: string;
-  name: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-interface Project {
-  id: string;
-  name: string;
-  owner_id: string;
-  created_at: Date;
-  updated_at: Date;
-}
-
-interface RegisterRequest {
-  email: string;
-  name: string;
-  password: string;
-}
-
-interface LoginRequest {
-  email: string;
-}
-
-interface CreateProjectRequest {
-  name: string;
-  ownerId: string;
-}
-
-interface Actor {
-  id: string;
-  project_id: string;
-  name: string;
-  position_x: number;
-  position_y: number;
-  created_at: Date;
-  updated_at: Date;
-  created_by: string;
-}
+import { User, Project, Actor, RegisterRequest, LoginRequest, CreateProjectRequest } from './types';
 
 dotenv.config();
 
@@ -117,8 +76,8 @@ const loginHandler: RequestHandler<{}, any, LoginRequest> = async (req, res): Pr
       return;
     }
 
-    const user = result.rows[0];
-    const isMatch = await bcrypt.compare(password, user.password!);
+    const user = result.rows[0] as User & { password: string };
+    const isMatch = await bcrypt.compare(password, user.password);
 
     if (!isMatch) {
       res.status(401).json({ error: 'Invalid credentials' });
@@ -126,9 +85,9 @@ const loginHandler: RequestHandler<{}, any, LoginRequest> = async (req, res): Pr
     }
 
     const token = jwt.sign({ id: user.id }, process.env.JWT_SECRET!);
-    delete user.password;
+    const { password: _, ...userWithoutPassword } = user;
 
-    res.json({ user, token });
+    res.json({ user: userWithoutPassword, token });
   } catch (error) {
     console.error('Login error:', error);
     res.status(500).json({ error: 'Internal server error' });
@@ -218,6 +177,9 @@ apiRouter.post('/projects/:projectId/actors', createActorHandler);
 // ルートハンドラーの登録
 apiRouter.post('/auth/register', registerHandler);
 apiRouter.post('/auth/login', loginHandler);
+
+// 認証が必要なエンドポイント
+apiRouter.use(auth);
 apiRouter.get('/projects/:id', getProjectHandler);
 apiRouter.post('/projects', createProjectHandler);
 
