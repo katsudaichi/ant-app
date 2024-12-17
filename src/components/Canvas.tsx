@@ -7,6 +7,7 @@ const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:3000';
 
 interface Props {
   projectId: string;
+  userId: string;
 }
 
 interface CursorPosition {
@@ -14,12 +15,12 @@ interface CursorPosition {
   position: { x: number; y: number };
 }
 
-export default function Canvas({ projectId }: Props) {
+export default function Canvas({ projectId, userId }: Props) {
   const [socket, setSocket] = useState<Socket | null>(null);
   const [cursors, setCursors] = useState<Map<string, { x: number; y: number }>>(new Map());
   const canvasRef = useRef<HTMLDivElement>(null);
   
-  const { actors, loadProject, updateActor } = useProjectStore();
+  const { actors, loadProject, updateActor, createActor } = useProjectStore();
 
   useEffect(() => {
     const newSocket = io(BACKEND_URL);
@@ -82,46 +83,65 @@ export default function Canvas({ projectId }: Props) {
     });
   };
 
-  return (
-    <div
-      ref={canvasRef}
-      className="relative w-full h-screen bg-gray-100"
-      onMouseMove={handleMouseMove}
-    >
-      {/* アクターの表示 */}
-      {actors.map(actor => (
-        <div
-          key={actor.id}
-          className="absolute cursor-move bg-blue-500 rounded-full w-8 h-8"
-          style={{
-            left: actor.position_x,
-            top: actor.position_y,
-            transform: 'translate(-50%, -50%)'
-          }}
-          draggable
-          onDragEnd={(e) => {
-            const rect = canvasRef.current?.getBoundingClientRect();
-            if (!rect) return;
-            handleActorDrag(actor, {
-              x: e.clientX - rect.left,
-              y: e.clientY - rect.top
-            });
-          }}
-        />
-      ))}
+  const handleAddActor = async () => {
+    await createActor(projectId, userId);
+  };
 
-      {/* カーソルの表示 */}
-      {Array.from(cursors.entries()).map(([userId, position]) => (
-        <div
-          key={userId}
-          className="absolute w-4 h-4 border-2 border-red-500 rounded-full"
-          style={{
-            left: position.x,
-            top: position.y,
-            transform: 'translate(-50%, -50%)'
-          }}
-        />
-      ))}
+  return (
+    <div className="relative w-full h-screen">
+      {/* ツールバー */}
+      <div className="absolute top-4 left-4 z-10 bg-white p-2 rounded-lg shadow-md">
+        <button
+          onClick={handleAddActor}
+          className="bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 transition-colors"
+        >
+          アクターを追加
+        </button>
+      </div>
+
+      {/* キャンバス */}
+      <div
+        ref={canvasRef}
+        className="w-full h-full bg-gray-100"
+        onMouseMove={handleMouseMove}
+      >
+        {/* アクターの表示 */}
+        {actors.map(actor => (
+          <div
+            key={actor.id}
+            className="absolute cursor-move bg-blue-500 rounded-full w-8 h-8 flex items-center justify-center text-white text-xs"
+            style={{
+              left: actor.position_x,
+              top: actor.position_y,
+              transform: 'translate(-50%, -50%)'
+            }}
+            draggable
+            onDragEnd={(e) => {
+              const rect = canvasRef.current?.getBoundingClientRect();
+              if (!rect) return;
+              handleActorDrag(actor, {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+              });
+            }}
+          >
+            {actor.name}
+          </div>
+        ))}
+
+        {/* カーソルの表示 */}
+        {Array.from(cursors.entries()).map(([userId, position]) => (
+          <div
+            key={userId}
+            className="absolute w-4 h-4 border-2 border-red-500 rounded-full"
+            style={{
+              left: position.x,
+              top: position.y,
+              transform: 'translate(-50%, -50%)'
+            }}
+          />
+        ))}
+      </div>
     </div>
   );
 } 
