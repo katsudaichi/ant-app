@@ -8,8 +8,8 @@ import path from 'path';
 import { QueryResult } from 'pg';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { auth } from './middleware/auth';
-import { User, Project, Actor, RegisterRequest, LoginRequest, CreateProjectRequest } from './types';
+import { auth } from './middleware/auth.js';
+import { User, Project, Actor, RegisterRequest, LoginRequest, CreateProjectRequest } from './types.js';
 
 dotenv.config();
 
